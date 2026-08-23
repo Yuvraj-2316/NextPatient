@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # NextPatient
 
 A campus/clinic front-desk tool where patients self-report symptoms and severity, and the system computes a **triage priority score** to automatically order the waiting queue.
@@ -92,3 +93,6 @@ NextPatient/
     ├── triage.js         # scoring logic, insertion sort, LocalStorage read/write
     └── render.js          # DOM rendering of the live queue
 ```
+=======
+# NextPatient
+>>>>>>> cb720dcaaa8d94ba83aa53816a5e8e3d2adfa4cb
