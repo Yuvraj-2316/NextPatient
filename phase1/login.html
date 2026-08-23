@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextPatient - Staff Login</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/login.css">
+</head>
+
+<body class="login-body">
+
+    <div class="login-layout">
+
+        <!-- ══ LEFT PANEL ══ -->
+        <div class="login-panel-left">
+            <a href="index.html" class="login-brand">NextPatient</a>
+            <div class="login-left-content">
+                <h2>Smart Triage.<br>Better Care.</h2>
+                <p>Patients are prioritised by medical urgency — not by who arrived first. Helping your clinic run fairly and efficiently.</p>
+                <div class="login-features">
+                    <div class="login-feature-item">
+                        <div class="lf-icon">⚡</div>
+                        <div>
+                            <strong>Urgency-Based Queue</strong>
+                            <span>Critical cases always seen first</span>
+                        </div>
+                    </div>
+                    <div class="login-feature-item">
+                        <div class="lf-icon">🔄</div>
+                        <div>
+                            <strong>Live Auto-Refresh</strong>
+                            <span>Queue updates every 10 seconds</span>
+                        </div>
+                    </div>
+                    <div class="login-feature-item">
+                        <div class="lf-icon">🔐</div>
+                        <div>
+                            <strong>Role-Based Access</strong>
+                            <span>Admin, Doctor & Receptionist portals</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="login-left-footer">⚕️ Non-diagnostic tool for educational use only.</p>
+        </div>
+
+        <!-- ══ RIGHT PANEL ══ -->
+        <div class="login-panel-right">
+            <div class="login-card">
+                <div class="login-card-header">
+                    <div class="login-avatar">🏥</div>
+                    <h1>Staff Login</h1>
+                    <p>Enter your credentials to access your portal</p>
+                </div>
+
+                <form id="loginForm">
+                    <div class="input-group">
+                        <label for="loginUsername">Username</label>
+                        <input type="text" id="loginUsername" placeholder="Enter your username">
+                    </div>
+                    <div class="input-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password">
+                    </div>
+                    <p id="loginError" style="display:none; color:#dc2626; font-size:0.9rem; text-align:left; margin:0;">⚠️ Invalid username or password.</p>
+                    <button type="button" onclick="handleLogin()">Log In</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+
+<script src="js/login.js"></script>
+</body>
+</html>
