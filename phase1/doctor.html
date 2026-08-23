@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextPatient - Doctor Workstation</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/doctor.css">
+</head>
+
+<body class="doctor-body admin-body">
+
+    <div class="dashboard-layout">
+
+        <!-- ══ SIDEBAR ══ -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏥 NextPatient</h2>
+                <p>Doctor Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="active" onclick="showDoctorSection('workstation', this)">🩺 Workstation</a>
+                <a href="#" onclick="showDoctorSection('history', this)">🔍 Patient Lookup</a>
+                <a href="contact.html">💬 Contact Admin</a>
+                <a href="#" onclick="handleLogout()" class="logout-btn">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <!-- ══ MAIN CONTENT ══ -->
+        <main class="main-content">
+            
+            <!-- ══ TOP NAVIGATION ══ -->
+            <header class="topbar doctor-topbar" style="border-bottom: 1px solid var(--border); box-shadow: none;">
+                <div class="brand">
+                    <h2 id="pageTitle" style="color:var(--text);">Workstation</h2>
+                </div>
+                <div class="user-profile">
+                    <span id="doctorNameDisplay">Dr. Provider</span>
+                </div>
+            </header>
+
+            <!-- ══ WORKSTATION ══ -->
+            <section id="workstation" class="dashboard-section doctor-workspace">
+                <div id="doctorWorkspaceContent"></div>
+            </section>
+
+            <!-- ══ PATIENT LOOKUP ══ -->
+            <section id="history" class="dashboard-section doctor-workspace" style="display:none;">
+                <div class="dashboard-card full-width">
+                    <div class="search-bar-row">
+                        <input type="text" id="searchPhoneDoctor" placeholder="Search by 10-digit phone number...">
+                        <button onclick="handleDoctorSearch()">Search</button>
+                    </div>
+                    <div id="searchResultsDoctor" class="results-grid"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/doctor.js"></script>
+    <script>
+        requireRole("doctor");
+        
+        // Populate doctor's name
+        let loggedInUser = JSON.parse(sessionStorage.getItem("loggedInUser"));
+        if (loggedInUser && loggedInUser.username) {
+            document.getElementById("doctorNameDisplay").textContent = `Dr. ${loggedInUser.username.charAt(0).toUpperCase() + loggedInUser.username.slice(1)}`;
+        }
+    </script>
+
+</body>
+</html>
