@@ -39,7 +39,7 @@ async function renderAdminStats() {
         </div>
         <div class="stat-card">
             <div class="stat-value emergency">${stats.emergencyCount}</div>
-            <div class="stat-label">Emergency Cases (>60)</div>
+            <div class="stat-label">Emergency Cases (>60)</div> 
         </div>
     `;
 
@@ -219,25 +219,12 @@ async function addStaffAndRefresh() {
     }
 }
 
-let staffToDeleteId = null;
+async function handleDeleteStaff(userId) {
+    let confirmDelete = window.confirm("Are you sure you want to permanently delete this staff member? This action cannot be undone.");
+    if (!confirmDelete) return;
 
-function handleDeleteStaff(userId) {
-    staffToDeleteId = userId;
-    document.getElementById("deleteModal").style.display = "flex";
-    let confirmBtn = document.getElementById("confirmDeleteBtn");
-    confirmBtn.onclick = null; 
-    confirmBtn.onclick = confirmDeleteStaff;
-}
-
-function closeDeleteModal() {
-    document.getElementById("deleteModal").style.display = "none";
-    staffToDeleteId = null;
-}
-
-async function confirmDeleteStaff() {
-    if (!staffToDeleteId) return;
     try {
-        await fetch(`${API_BASE}/users/${staffToDeleteId}`, {
+        await fetch(`${API_BASE}/users/${userId}`, {
             method: "DELETE"
         });
         if (typeof renderStaffList === "function") {
@@ -247,7 +234,6 @@ async function confirmDeleteStaff() {
         console.error("Error deleting staff:", error);
         alert("Failed to delete staff member.");
     }
-    closeDeleteModal();
 }
 
 async function handleSearch() {
@@ -342,31 +328,14 @@ async function renderComplaints() {
     });
 }
 
-let complaintToResolveId = null;
-
-function resolveComplaint(id) {
-    complaintToResolveId = id;
-    document.getElementById("resolveModal").style.display = "flex";
-    
-    let confirmBtn = document.getElementById("confirmResolveBtn");
-    confirmBtn.onclick = null;
-    confirmBtn.onclick = confirmResolveComplaint;
-}
-
-function closeResolveModal() {
-    document.getElementById("resolveModal").style.display = "none";
-    complaintToResolveId = null;
-}
-
-async function confirmResolveComplaint() {
-    if (!complaintToResolveId) return;
+async function resolveComplaint(id) {
+    let confirmResolve = window.confirm("Are you sure you want to mark this complaint as resolved? It will be permanently removed from this list.");
+    if (!confirmResolve) return;
     
     try {
-        await deleteComplaint(complaintToResolveId);
+        await deleteComplaint(id);
         await renderComplaints();
     } catch (e) {
         console.error(e);
     }
-    
-    closeResolveModal();
 }
