@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://your-actual-render-url.onrender.com";
 
 // ===== Utility Functions =====
 
