@@ -1,5 +1,4 @@
-const API_BASE = "https://your-actual-render-url.onrender.com";
-
+const API_BASE = "https://nextpatientbee.onrender.com";
 // ===== Utility Functions =====
 
 function calculateTriageScore(pain, breathing, hasfever, hasfainting, haschestPain, hasbleeding, hasvomiting, hasdizziness, age, duration, gender) {
