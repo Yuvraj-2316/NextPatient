@@ -2,7 +2,6 @@
 
 NextPatient is a smart front-desk tool for clinics and hospitals where patients self-report their symptoms and severity. The system computes a **triage priority score** to dynamically order the waiting queue, ensuring that critical cases are attended to first based on urgency rather than just arrival time.
 
-🔗 **Live Demo:** [https://next-patient-bee.vercel.app/](https://next-patient-bee.vercel.app/)
 
 > ⚠️ **Non-diagnostic disclaimer**: NextPatient does not diagnose medical conditions. It is an educational tool designed to determine waiting-room order based on self-reported symptoms, severity, duration, and specific risk factors. It is not a substitute for professional medical judgment.
 
