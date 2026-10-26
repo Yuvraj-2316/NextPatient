@@ -672,3 +672,25 @@ a { text-decoration: none; color: inherit; }
 
     .btn-primary, .btn-outline { padding: 0.85rem 1.8rem; font-size: 0.95rem; }
 }
+
+/* ===== Phase 2 responsive fixes (home page) ===== */
+/* The mobile rules above use .home-section / .strip-divider, which aren't in index.html;
+   these target the real class names. */
+.cta-section { overflow: hidden; }
+
+@media (max-width: 1024px) {
+    .section { padding: 5rem 5%; }
+}
+
+@media (max-width: 767px) {
+    .hero { min-height: auto; }
+    .hero-buttons { flex-wrap: wrap; justify-content: center; }
+    .hero-card-main { max-width: 100%; }
+
+    .stat-divider { width: 60px; height: 1px; }
+
+    .section { padding: 4rem 5%; }
+    .section-header { margin-bottom: 2.5rem; }
+
+    .nav-brand { font-size: 1.2rem; }
+}
