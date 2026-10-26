@@ -2,14 +2,16 @@ async function handleLogin() {
     let username = document.getElementById("loginUsername").value.trim();
     let password = document.getElementById("loginPassword").value;
 
-    let users = await getUsers();
-
-    let matchedUser = users.find(function(user){
-        return user.username === username && user.password === password;
-    });
-
-    if (!matchedUser) {
-        document.getElementById("loginError").style.display = "block";
+    // The server checks the password and returns the user (without any password)
+    let matchedUser;
+    try {
+        matchedUser = await loginUser(username, password);
+    } catch (error) {
+        if (error.status === 400 || error.status === 401) {
+            document.getElementById("loginError").style.display = "block";
+        } else {
+            alert("Could not reach the server. Please try again.");
+        }
         return;
     }
 

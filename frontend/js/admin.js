@@ -190,20 +190,13 @@ async function handleAddStaff() {
         return;
     }
 
-    let users = await getUsers();
-    let usernameTaken = users.some(u => u.username === username);
-    if (usernameTaken) {
-        alert("That username is already taken");
+    // The server hashes the password and rejects duplicate usernames (409)
+    try {
+        await createStaff(username, password, role);
+    } catch (error) {
+        alert(error.message);
         return;
     }
-
-    let newUser = { username, password, role };
-
-    await fetch(`${API_BASE}/users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newUser)
-    });
 
     document.getElementById("staffUsername").value = "";
     document.getElementById("staffPassword").value = "";
@@ -224,15 +217,13 @@ async function handleDeleteStaff(userId) {
     if (!confirmDelete) return;
 
     try {
-        await fetch(`${API_BASE}/users/${userId}`, {
-            method: "DELETE"
-        });
+        await deleteStaff(userId);
         if (typeof renderStaffList === "function") {
             renderStaffList();
         }
     } catch (error) {
         console.error("Error deleting staff:", error);
-        alert("Failed to delete staff member.");
+        alert(error.message);
     }
 }
 
@@ -246,44 +237,9 @@ async function handleSearch() {
         return;
     }
 
-    let matches = await searchByPhone(searchPhone);
-    matches.sort((a, b) => b.servedTime - a.servedTime);
-
-    let resultsDiv = document.getElementById("searchResults");
-    resultsDiv.innerHTML = "";
-
-    if (matches.length === 0) {
-        resultsDiv.innerHTML = "<p>No records found.</p>";
-    }
-    else {
-        matches.forEach(function (patient) {
-            let patientCard = document.createElement("div");
-            patientCard.className = "patientCard"
-
-            let symptomsText = (patient.symptoms && patient.symptoms.length > 0)
-                ? patient.symptoms.join(", ")
-                : "None reported";
-
-            let durationLabels = {
-                "acute": "Under 24 hours",
-                "short_term": "1-3 days",
-                "medium_term": "4-7 days",
-                "chronic": "More than a week"
-            };
-            let durationText = patient.duration ? durationLabels[patient.duration] : "Unknown";
-
-            patientCard.innerHTML =
-                `<h3>${patient.name}</h3>
-            <p>Age: ${patient.age} ${patient.gender ? '(' + patient.gender + ')' : ''}</p>
-            <p>Symptoms: ${symptomsText} (Duration: ${durationText})</p>
-            <p>Treatment/Notes: ${patient.doctorNotes ? patient.doctorNotes : "—"}</p>
-            <p>Visit Date: ${new Date(patient.servedTime).toLocaleString()}</p>`;
-
-            resultsDiv.appendChild(patientCard);
-        });
-    }
+    // Patient cards first; clicking one opens that patient's history (patientLookup.js)
+    await renderPatientLookup(searchPhone, document.getElementById("searchResults"));
 }
-
 // Initial render for Admin Dashboard
 renderAdminStats();
 

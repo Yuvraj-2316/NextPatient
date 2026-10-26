@@ -1,12 +1,5 @@
-async function checkIfAdminExists() {
-    let users = await getUsers();
-    return users.some(function(user){
-        return user.role === "admin";
-    });
-}
-
 async function handleAdminSignup() {
-    let adminExists = await checkIfAdminExists();
+    let adminExists = await checkAdminExists();
 
     if (adminExists) {
         document.getElementById("signupBlockedMessage").style.display = "block";
@@ -25,27 +18,17 @@ async function handleAdminSignup() {
         return;
     }
 
-    let users = await getUsers();
-    let usernameTaken = users.some(function(user){
-        return user.username === username;
-    });
-
-    if (usernameTaken) {
-        alert("That username is already taken");
+    // The server hashes the password and blocks signup if an admin already exists
+    try {
+        await registerAdmin(username, password);
+    } catch (error) {
+        if (error.status === 403) {
+            document.getElementById("signupBlockedMessage").style.display = "block";
+        } else {
+            alert(error.message);
+        }
         return;
     }
-
-    let newAdmin = {
-        username: username,
-        password: password,
-        role: "admin"
-    };
-
-    await fetch(`${API_BASE}/users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newAdmin)
-    });
 
     alert("Admin account created! Redirecting to login.");
     window.location.href = "login.html";
