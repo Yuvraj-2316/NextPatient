@@ -1,38 +1,16 @@
-const API_BASE = "https://nextpatientbee.onrender.com";
+// Phase 2: all data comes from the Express + MongoDB backend (phase2/backend).
+// Change only this line to switch between the local and the deployed backend.
+const API_BASE = "http://localhost:5000/api";
+
 // ===== Utility Functions =====
 
-function calculateTriageScore(pain, breathing, hasfever, hasfainting, haschestPain, hasbleeding, hasvomiting, hasdizziness, age, duration, gender) {
-    let score = parseInt(pain) + parseInt(breathing);
-
-    if (hasfever) score += 10;
-    if (hasfainting) score += 30;
-    if (haschestPain) score += 40;
-    if (hasbleeding) score += 35;
-    if (hasvomiting) score += 10;
-    if (hasdizziness) score += 15;
-
-    if (age >= 60 && age < 80) score += 5;
-    if (age >= 80 || age < 5) score += 10;
-
-    if (duration === "acute" && score >= 40) score += 15;
-    else if (duration === "chronic" && score >= 40) score -= 5;
-    else if (duration === "chronic" && score < 40) score -= 10;
-
-    // Gender specific adjustments
-    if (gender === 'Female' && hasbleeding) {
-        score += 15; // Higher priority for potential obstetric/gynecological emergencies
-    }
-
-    return score;
-}
-
+// The triage score and wait-time bonus are calculated on the server (services/triage.js).
+// GET /api/queue sends effectiveScore with each patient; this keeps intake.js working unchanged.
 function getEffectiveScore(patient) {
-    // 10000ms = 10 seconds for testing
-    let waitingTimeMs = Date.now() - patient.arrivalTime;
-    let intervalsPassed = Math.floor(waitingTimeMs / 10000); 
-    
-    let bonus = intervalsPassed * 10;
-    return patient.triageScore + bonus;
+    if (typeof patient.effectiveScore === "number") {
+        return patient.effectiveScore;
+    }
+    return patient.triageScore;
 }
 
 function isToday(timestamp) {
@@ -44,185 +22,141 @@ function isToday(timestamp) {
            visitDate.getFullYear() === now.getFullYear();
 }
 
-// ===== API Wrappers =====
+// One place for every request: sends JSON, reads JSON,
+// and throws an Error with the server's message when the status is not 2xx.
+async function apiRequest(path, options = {}) {
+    let fetchOptions = {
+        method: options.method || "GET",
+        headers: {},
+        cache: "no-store"
+    };
 
+    if (options.body !== undefined) {
+        fetchOptions.headers["Content-Type"] = "application/json";
+        fetchOptions.body = JSON.stringify(options.body);
+    }
+
+    let response = await fetch(`${API_BASE}${path}`, fetchOptions);
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (e) {
+        // Response had no JSON body
+    }
+
+    if (!response.ok) {
+        let error = new Error((data && data.message) || `Request failed (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+
+    return data;
+}
+
+// ===== Queue =====
+
+// Waiting patients, already sorted by priority on the server
 async function getQueue() {
-    let response = await fetch(`${API_BASE}/queueData`);
-    let data = await response.json();
-    return data.patients;
+    return apiRequest("/queue");
 }
 
-async function saveQueue(queue) {
-    await fetch(`${API_BASE}/queueData`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: 1, patients: queue })
-    });
+// Adds a patient; the server calculates the triage score and position
+async function addPatientToQueue(patientDetails) {
+    return apiRequest("/queue", { method: "POST", body: patientDetails });
 }
 
-async function getServedHistory() {
-    let response = await fetch(`${API_BASE}/servedHistoryData`);
-    let data = await response.json();
-    return data.visits;
+// Calls the next patient only if nobody is being served (same rule as phase 1)
+async function autoCallNextIfAvailable() {
+    return apiRequest("/queue/next", { method: "POST" });
 }
 
-async function saveServedHistory(history) {
-    await fetch(`${API_BASE}/servedHistoryData`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: 1, visits: history })
-    });
-}
+// ===== Serving =====
 
 async function getCurrentlyServing() {
-    let response = await fetch(`${API_BASE}/currentlyServingData`);
-    let data = await response.json();
+    let data = await apiRequest("/serving");
     return data.patient;
 }
 
-async function setCurrentlyServing(patient) {
-    await fetch(`${API_BASE}/currentlyServingData`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: 1, patient: patient })
-    });
+// Saves the doctor's notes and moves the current patient to history
+async function completeCurrentVisit(doctorNotes) {
+    return apiRequest("/serving/complete", { method: "POST", body: { doctorNotes: doctorNotes } });
 }
 
-async function getUsers() {
-    let response = await fetch(`${API_BASE}/users`, { cache: 'no-store' });
-    let users = await response.json();
-    return users;
+// ===== Visits & Stats =====
+
+async function getServedHistory() {
+    return apiRequest("/visits");
 }
 
 async function searchByPhone(phoneNumber) {
-    let history = await getServedHistory();
-    let matches = history.filter(function (patient) {
-        return patient.phone === phoneNumber;
-    });
-    return matches;
+    return apiRequest(`/visits?phone=${encodeURIComponent(phoneNumber)}`);
 }
 
+// One entry per patient on this phone number (family members can share a number)
+async function getPatientsByPhone(phoneNumber) {
+    return apiRequest(`/visits/patients?phone=${encodeURIComponent(phoneNumber)}`);
+}
+
+// One patient's visits, earliest first
+async function getPatientHistory(phoneNumber, patientName) {
+    return apiRequest(`/visits?phone=${encodeURIComponent(phoneNumber)}&name=${encodeURIComponent(patientName)}&order=asc`);
+}
+
+// tzOffset lets the server count "today" in the user's timezone, not the server's
 async function getTodaysStats() {
-    let history = await getServedHistory();
-    let todaysVisits = history.filter(function(visit){
-        return isToday(visit.servedTime);
-    });
-
-    let emergencyCount = todaysVisits.filter(function(visit){
-        return visit.triageScore >= 60;
-    }).length;
-
-    let queue = await getQueue();
-
-    return {
-        totalServedToday: todaysVisits.length,
-        emergencyCount: emergencyCount,
-        currentlyWaiting: queue.length
-    };
+    let tzOffset = new Date().getTimezoneOffset();
+    return apiRequest(`/visits/stats?tzOffset=${tzOffset}`);
 }
 
-async function addPatientToQueue(patient) {
-    let queue = await getQueue();
-    let inserted = false;
+// ===== Auth & Users =====
 
-    for (let i = 0; i < queue.length; i++) {
-        let newPatientScore = getEffectiveScore(patient);
-        let existingPatientScore = getEffectiveScore(queue[i]);
-
-        if (newPatientScore > existingPatientScore) {
-            queue.splice(i, 0, patient)
-            inserted = true;
-            break;
-        }
-        else if (newPatientScore == existingPatientScore) {
-            if (patient.arrivalTime < queue[i].arrivalTime) {
-                queue.splice(i, 0, patient);
-                inserted = true;
-                break;
-            }
-        }
-    }
-    if (inserted == false) {
-        queue.push(patient)
-    }
-
-    await saveQueue(queue);
+// Password is checked on the server; returns the user (without password) or throws
+async function loginUser(username, password) {
+    return apiRequest("/auth/login", { method: "POST", body: { username, password } });
 }
 
-async function refreshQueueOrder() {
-    let queue = await getQueue();
-    if (queue.length <= 1) return;
-
-    let newQueue = [];
-    
-    for (let p = 0; p < queue.length; p++) {
-        let patient = queue[p];
-        let inserted = false;
-        
-        let newPatientScore = getEffectiveScore(patient);
-
-        for (let i = 0; i < newQueue.length; i++) {
-            let existingPatientScore = getEffectiveScore(newQueue[i]);
-
-            if (newPatientScore > existingPatientScore) {
-                newQueue.splice(i, 0, patient);
-                inserted = true;
-                break;
-            } else if (newPatientScore == existingPatientScore) {
-                if (patient.arrivalTime < newQueue[i].arrivalTime) {
-                    newQueue.splice(i, 0, patient);
-                    inserted = true;
-                    break;
-                }
-            }
-        }
-        
-        if (!inserted) {
-            newQueue.push(patient);
-        }
-    }
-
-    await saveQueue(newQueue);
+async function checkAdminExists() {
+    let data = await apiRequest("/users/admin-exists");
+    return data.adminExists;
 }
 
-async function autoCallNextIfAvailable() {
-    let currentlyServing = await getCurrentlyServing();
-    if (currentlyServing != null) return;
+async function registerAdmin(username, password) {
+    return apiRequest("/auth/register-admin", { method: "POST", body: { username, password } });
+}
 
-    let queue = await getQueue();
-    if (queue.length == 0) return;
+// Staff list for the admin dashboard (no passwords are returned)
+async function getUsers() {
+    return apiRequest("/users");
+}
 
-    let nextPatient = queue.shift();
-    await setCurrentlyServing(nextPatient);
-    await saveQueue(queue);
+async function createStaff(username, password, role) {
+    return apiRequest("/users", { method: "POST", body: { username, password, role } });
+}
+
+async function deleteStaff(userId) {
+    return apiRequest(`/users/${userId}`, { method: "DELETE" });
 }
 
 // ===== Complaints API =====
 
 async function getComplaints() {
     try {
-        let response = await fetch(`${API_BASE}/complaints`);
-        if (response.ok) {
-            return await response.json();
-        }
-    } catch(e) {}
-    return [];
+        return await apiRequest("/complaints");
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
 }
 
 async function submitComplaint(complaint) {
-    await fetch(`${API_BASE}/complaints`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(complaint)
-    });
+    return apiRequest("/complaints", { method: "POST", body: complaint });
 }
 
 async function deleteComplaint(id) {
     try {
-        await fetch(`${API_BASE}/complaints/${id}`, {
-            method: 'DELETE'
-        });
-    } catch (e) {
-        console.error(e);
+        await apiRequest(`/complaints/${id}`, { method: "DELETE" });
+    } catch (error) {
+        console.error(error);
     }
 }
