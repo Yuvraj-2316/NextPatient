@@ -4,6 +4,10 @@ const mongoose = require("mongoose");
 
 const queueRoutes = require("./routes/queueRoutes");
 const servingRoutes = require("./routes/servingRoutes");
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
+
+const app = express();
 
 // ===== Basic routes =====
 
@@ -23,6 +27,8 @@ app.get("/api/health", function (req, res) {
 
 app.use("/api/queue", queueRoutes);
 app.use("/api/serving", servingRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
 // error handling
 
