@@ -1,6 +1,27 @@
 const Patient = require("../models/Patient");
 const { calculateTriageScore, getEffectiveScore, sortQueue } = require("../services/triage");
 
+// Takes only the fields staff may set and calculates the triage score on the server,
+// so the frontend can never send its own score, status or arrival time.
+// Shared by "add patient" (POST) and "update patient" (PUT).
+function buildPatientData(body) {
+    let { name, age, phone, gender, pain, breathing, symptoms, duration } = body;
+
+    let patientData = {
+        name: name,
+        age: Number(age),
+        phone: phone,
+        gender: gender,
+        pain: Number(pain),
+        breathing: Number(breathing),
+        symptoms: Array.isArray(symptoms) ? symptoms : [],
+        duration: duration
+    };
+
+    patientData.triageScore = calculateTriageScore(patientData);
+    return patientData;
+}
+
 // GET /api/queue
 // All waiting patients, highest priority first, with their current effective score
 async function getQueue(req, res) {
@@ -17,26 +38,38 @@ async function getQueue(req, res) {
 }
 
 // POST /api/queue
-// Adds a patient. The triage score is calculated here, never taken from the request,
-// so the frontend cannot fake a higher priority.
+// Adds a patient to the queue
 async function addPatient(req, res) {
-    let { name, age, phone, gender, pain, breathing, symptoms, duration } = req.body;
-
-    let patientData = {
-        name: name,
-        age: Number(age),
-        phone: phone,
-        gender: gender,
-        pain: Number(pain),
-        breathing: Number(breathing),
-        symptoms: Array.isArray(symptoms) ? symptoms : [],
-        duration: duration
-    };
-
-    patientData.triageScore = calculateTriageScore(patientData);
-
-    let patient = await Patient.create(patientData);
+    let patient = await Patient.create(buildPatientData(req.body));
     res.status(201).json(patient);
+}
+
+// PUT /api/queue/:id
+// Replaces a waiting patient's details (e.g. a typo in the name or wrong symptoms).
+// Only patients still waiting can be edited; the triage score is recalculated.
+async function updatePatient(req, res) {
+    let patient = await Patient.findOne({ _id: req.params.id, status: "waiting" });
+
+    if (!patient) {
+        return res.status(404).json({ message: "Waiting patient not found" });
+    }
+
+    patient.set(buildPatientData(req.body));
+    await patient.save();
+
+    res.json(patient);
+}
+
+// DELETE /api/queue/:id
+// Removes a waiting patient who left before being seen
+async function removePatient(req, res) {
+    let patient = await Patient.findOneAndDelete({ _id: req.params.id, status: "waiting" });
+
+    if (!patient) {
+        return res.status(404).json({ message: "Waiting patient not found" });
+    }
+
+    res.json({ message: "Patient removed from queue", id: req.params.id });
 }
 
 // POST /api/queue/next
@@ -64,4 +97,4 @@ async function callNext(req, res) {
     res.json({ called: false, message: "The queue is empty", patient: null });
 }
 
-module.exports = { getQueue, addPatient, callNext };
+module.exports = { getQueue, addPatient, updatePatient, removePatient, callNext };
