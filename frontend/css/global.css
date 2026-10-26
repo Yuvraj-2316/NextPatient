@@ -840,3 +840,66 @@ hr {
         transform: scale(1);
     }
 }
+
+
+/* ===== Patient lookup: patient cards + visit history (phase 2) ===== */
+.lookup-card {
+    cursor: pointer;
+}
+
+.lookup-card:focus {
+    outline: 3px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
+.patientCard .lookup-hint {
+    color: var(--primary);
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.lookup-history {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    text-align: left;
+}
+
+.lookup-back-btn {
+    align-self: flex-start;
+    width: auto;
+}
+
+.lookup-history-header h3 {
+    margin: 0;
+    color: var(--primary-dark);
+}
+
+.lookup-history-header p,
+.lookup-muted {
+    color: var(--text-muted);
+}
+
+.lookup-history-header p {
+    margin: 0.25rem 0 0;
+}
+
+.lookup-visit {
+    border: 1.5px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background: #fff;
+}
+
+.lookup-visit-date {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+}
+
+.lookup-visit p {
+    margin: 0.25rem 0;
+}
