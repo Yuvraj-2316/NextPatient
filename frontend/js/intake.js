@@ -28,8 +28,6 @@ async function handleFormsubmit(event) {
         return;
     }
 
-    let score = calculateTriageScore(pain, breathing, hasfever, hasfainting, haschestPain, hasbleeding, hasvomiting, hasdizziness, age, duration, gender);
-
     let symptomsList = [];
     if (hasfever) symptomsList.push("Fever");
     if (hasfainting) symptomsList.push("Fainting / Loss of Consciousness");
@@ -38,20 +36,24 @@ async function handleFormsubmit(event) {
     if (hasvomiting) symptomsList.push("Vomiting");
     if (hasdizziness) symptomsList.push("Dizziness");
 
-    const patient = {
-        id: Date.now() + "-" + Math.random(),
+    // The backend calculates the triage score and arrival time (services/triage.js)
+    const patientDetails = {
         name: name,
         age: age,
         gender: gender,
         phone: phone,
-        triageScore: score,
+        pain: Number(pain),
+        breathing: Number(breathing),
         symptoms: symptomsList,
-        duration: duration,
-        arrivalTime: Date.now(),
-        status: "waiting",
+        duration: duration
     }
 
-    await addPatientToQueue(patient);
+    try {
+        await addPatientToQueue(patientDetails);
+    } catch (error) {
+        alert(error.message);
+        return;
+    }
     await renderQueue();
 
     // Reset form
@@ -136,10 +138,10 @@ async function renderQueue() {
 // Initial Render
 renderQueue();
 
-// Anti-Starvation Heartbeat: Runs every 10 seconds to re-sort the queue
+// Anti-Starvation Heartbeat: every 10 seconds, fetch the queue again.
+// The server re-sorts it with the latest wait-time bonus on every request.
 setInterval(async () => {
     if (document.getElementById("queue_container")) {
-        await refreshQueueOrder();
         await renderQueue();
     }
 }, 10000);

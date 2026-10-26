@@ -19,7 +19,7 @@ async function renderDoctorView() {
 
     if (currentlyServing == null) {
         let stats = await getTodaysStats();
-        
+
         workspaceContent.innerHTML = `
             <div class="doctor-empty" style="height: auto; margin-top: 4rem;">
                 <div class="doctor-empty-icon" style="font-size: 3rem; margin-bottom: 0;">🏥</div>
@@ -52,7 +52,8 @@ async function renderDoctorView() {
     }
 
     // If there is a patient, fetch their history first
-    let pastVisits = await searchByPhone(currentlyServing.phone);
+    // Only this patient's visits, not other family members on the same phone
+    let pastVisits = await getPatientHistory(currentlyServing.phone, currentlyServing.name);
     pastVisits.sort((a, b) => b.servedTime - a.servedTime);
 
     // Build Symptoms tags
@@ -101,7 +102,7 @@ async function renderDoctorView() {
                         </div>
                         <div class="meta-item">
                             <span>Arrival Time</span>
-                            <strong>${new Date(currentlyServing.arrivalTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong>
+                            <strong>${new Date(currentlyServing.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
                         </div>
                         <div class="meta-item">
                             <span>Triage Score</span>
@@ -139,18 +140,15 @@ renderDoctorView();
 
 
 async function handleServePatient() {
-    let servedPatient = await getCurrentlyServing();
-    if (servedPatient == null) return;
+    let notesBox = document.getElementById("doctorNotes");
+    let doctorNotes = notesBox ? notesBox.value.trim() : "";
 
-    servedPatient.status = "served";
-    servedPatient.servedTime = Date.now();
-    servedPatient.doctorNotes = document.getElementById("doctorNotes") ? document.getElementById("doctorNotes").value.trim() : "";
-
-    let history = await getServedHistory();
-    history.push(servedPatient);
-    await saveServedHistory(history);
-
-    await setCurrentlyServing(null);
+    // One request: the server saves notes, sets servedTime and moves the patient to history
+    try {
+        await completeCurrentVisit(doctorNotes);
+    } catch (error) {
+        alert(error.message);
+    }
 
     await autoCallNextIfAvailable();
     await renderDoctorView();
@@ -159,16 +157,16 @@ async function handleServePatient() {
 // ===== Sidebar Navigation =====
 const doctorSectionTitles = {
     workstation: 'Workstation',
-    history:     'Patient Lookup'
+    history: 'Patient Lookup'
 };
 
 function showDoctorSection(sectionId, clickedLink) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.style.display = 'none');
     document.getElementById(sectionId).style.display = 'block';
-    
+
     let titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = doctorSectionTitles[sectionId];
-    
+
     document.querySelectorAll('.sidebar-nav a:not(.logout-btn)').forEach(a => a.classList.remove('active'));
     if (clickedLink) clickedLink.classList.add('active');
 
@@ -186,40 +184,6 @@ async function handleDoctorSearch() {
         return;
     }
 
-    let matches = await searchByPhone(searchPhone);
-    matches.sort((a, b) => b.servedTime - a.servedTime);
-
-    let resultsDiv = document.getElementById("searchResultsDoctor");
-    resultsDiv.innerHTML = "";
-
-    if (matches.length === 0) {
-        resultsDiv.innerHTML = "<p class='empty-role-msg'>No records found for this phone number.</p>";
-    }
-    else {
-        matches.forEach(function (patient) {
-            let patientCard = document.createElement("div");
-            patientCard.className = "patientCard"
-
-            let symptomsText = (patient.symptoms && patient.symptoms.length > 0)
-                ? patient.symptoms.join(", ")
-                : "None reported";
-
-            let durationLabels = {
-                "acute": "Under 24 hours",
-                "short_term": "1-3 days",
-                "medium_term": "4-7 days",
-                "chronic": "More than a week"
-            };
-            let durationText = patient.duration ? durationLabels[patient.duration] : "Unknown";
-
-            patientCard.innerHTML =
-                `<h3>${patient.name}</h3>
-            <p><strong>Age/Gender:</strong> ${patient.age} ${patient.gender ? '(' + patient.gender + ')' : ''}</p>
-            <p><strong>Symptoms:</strong> ${symptomsText} <span style="color:var(--text-muted); font-size:0.85rem;">(Duration: ${durationText})</span></p>
-            <p><strong>Treatment/Notes:</strong> ${patient.doctorNotes ? patient.doctorNotes : "—"}</p>
-            <p><strong>Visit Date:</strong> ${new Date(patient.servedTime).toLocaleString()}</p>`;
-
-            resultsDiv.appendChild(patientCard);
-        });
-    }
+    // Patient cards first; clicking one opens that patient's history (patientLookup.js)
+    await renderPatientLookup(searchPhone, document.getElementById("searchResultsDoctor"));
 }
