@@ -1,3 +1,10 @@
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+
+const queueRoutes = require("./routes/queueRoutes");
+const servingRoutes = require("./routes/servingRoutes");
+
 // ===== Basic routes =====
 
 app.get("/", function (req, res) {
@@ -12,3 +19,14 @@ app.get("/api/health", function (req, res) {
         database: dbConnected ? "connected" : "disconnected"
     });
 });
+/// api routes 
+
+app.use("/api/queue", queueRoutes);
+app.use("/api/serving", servingRoutes);
+
+// error handling
+
+app.use(notFound);
+app.use(errorHandler);
+
+module.exports = app;
