@@ -1,4 +1,4 @@
-// Phase 2: all data comes from the Express + MongoDB backend (phase2/backend).
+// Phase 2: all data comes from the Express + MongoDB backend (backend/).
 // Change only this line to switch between the local and the deployed backend.
 const API_BASE = "http://localhost:5000/api";
 
@@ -22,7 +22,22 @@ function isToday(timestamp) {
            visitDate.getFullYear() === now.getFullYear();
 }
 
-// One place for every request: sends JSON, reads JSON,
+// ===== Login token =====
+
+// The token saved at login (login.js stores it with the user; getLoggedInUser is in auth.js)
+function getAuthToken() {
+    let user = getLoggedInUser();
+    return user ? user.token : null;
+}
+
+// Clears the saved login and goes back to the login page (token missing or expired)
+function endSession() {
+    sessionStorage.removeItem("loggedInUser");
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "login.html";
+}
+
+// One place for every request: sends JSON plus the login token, reads JSON,
 // and throws an Error with the server's message when the status is not 2xx.
 async function apiRequest(path, options = {}) {
     let fetchOptions = {
@@ -36,6 +51,11 @@ async function apiRequest(path, options = {}) {
         fetchOptions.body = JSON.stringify(options.body);
     }
 
+    let token = getAuthToken();
+    if (token) {
+        fetchOptions.headers["Authorization"] = `Bearer ${token}`;
+    }
+
     let response = await fetch(`${API_BASE}${path}`, fetchOptions);
 
     let data = null;
@@ -43,6 +63,12 @@ async function apiRequest(path, options = {}) {
         data = await response.json();
     } catch (e) {
         // Response had no JSON body
+    }
+
+    // 401 on a protected route means the session is over.
+    // (On /auth/login a 401 just means a wrong password, so login.js handles that itself.)
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+        endSession();
     }
 
     if (!response.ok) {
@@ -111,7 +137,7 @@ async function getTodaysStats() {
 
 // ===== Auth & Users =====
 
-// Password is checked on the server; returns the user (without password) or throws
+// Password is checked on the server; returns { token, user } or throws
 async function loginUser(username, password) {
     return apiRequest("/auth/login", { method: "POST", body: { username, password } });
 }

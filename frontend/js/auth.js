@@ -1,4 +1,3 @@
-
 function getLoggedInUser() {
     let user = sessionStorage.getItem("loggedInUser");
     if (!user) {
@@ -13,10 +12,13 @@ function handleLogout() {
     window.location.href = "index.html";
 }
 
+// Decides which page the browser shows. The real protection is on the server,
+// which checks the token's signature and role on every API request.
 function requireRole(allowedRole) {
     let loggedInUser = getLoggedInUser();
 
-    if (!loggedInUser) {
+    // No login, or an old login saved before tokens were added: log in again
+    if (!loggedInUser || !loggedInUser.token) {
         window.location.href = "login.html";
         return;
     }

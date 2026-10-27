@@ -2,10 +2,10 @@ async function handleLogin() {
     let username = document.getElementById("loginUsername").value.trim();
     let password = document.getElementById("loginPassword").value;
 
-    // The server checks the password and returns the user (without any password)
-    let matchedUser;
+    // The server checks the password and returns { token, user } (never the password)
+    let result;
     try {
-        matchedUser = await loginUser(username, password);
+        result = await loginUser(username, password);
     } catch (error) {
         if (error.status === 400 || error.status === 401) {
             document.getElementById("loginError").style.display = "block";
@@ -15,21 +15,25 @@ async function handleLogin() {
         return;
     }
 
+    // Saved together so every page knows who is logged in,
+    // and api.js can send the token with each request
+    let loggedInUser = { ...result.user, token: result.token };
+
     let rememberMe = document.getElementById("rememberMe").checked;
 
     if (rememberMe) {
-        localStorage.setItem("loggedInUser", JSON.stringify(matchedUser));
+        localStorage.setItem("loggedInUser", JSON.stringify(loggedInUser));
     } else {
-        sessionStorage.setItem("loggedInUser", JSON.stringify(matchedUser));
+        sessionStorage.setItem("loggedInUser", JSON.stringify(loggedInUser));
     }
 
-    if (matchedUser.role === "admin") {
+    if (loggedInUser.role === "admin") {
         window.location.href = "admin.html";
     }
-    else if (matchedUser.role === "doctor") {
+    else if (loggedInUser.role === "doctor") {
         window.location.href = "doctor.html";
     }
-    else if (matchedUser.role === "receptionist") {
+    else if (loggedInUser.role === "receptionist") {
         window.location.href = "intake.html";
     }
 }
