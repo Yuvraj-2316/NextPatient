@@ -8,10 +8,19 @@ async function getComplaints(req, res) {
 }
 
 // POST /api/complaints
+// The sender comes from the login token (req.user), not from the request body,
+// so nobody can send a complaint in someone else's name.
 async function createComplaint(req, res) {
-    let { userId, name, role, subject, message } = req.body;
+    let { subject, message } = req.body;
 
-    let complaint = await Complaint.create({ userId, name, role, subject, message });
+    let complaint = await Complaint.create({
+        userId: req.user._id,
+        name: req.user.username,
+        role: req.user.role,
+        subject: subject,
+        message: message
+    });
+
     res.status(201).json(complaint);
 }
 

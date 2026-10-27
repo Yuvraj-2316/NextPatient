@@ -1,8 +1,9 @@
 const User = require("../models/User");
 const { createUser } = require("../services/userService");
+const { createToken } = require("../middleware/auth");
 
 // POST /api/auth/login
-// Checks the password on the server. The password hash never leaves the backend.
+// Checks the password on the server and returns a signed token plus the user.
 async function login(req, res) {
     let { username, password } = req.body;
 
@@ -18,7 +19,7 @@ async function login(req, res) {
         return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    res.json(user);
+    res.json({ token: createToken(user), user: user });
 }
 
 // POST /api/auth/register-admin

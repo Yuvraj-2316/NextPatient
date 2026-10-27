@@ -8,6 +8,11 @@ const PORT = process.env.PORT || 5000;
 
 async function startServer() {
     try {
+        // Without a secret, login tokens could not be signed or checked
+        if (!process.env.JWT_SECRET) {
+            throw new Error("JWT_SECRET is not set. Add it to your .env file.");
+        }
+
         await connectDB(process.env.MONGODB_URI);
 
         app.listen(PORT, function () {
