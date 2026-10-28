@@ -1,7 +1,7 @@
 const express = require("express");
 const asyncHandler = require("../middleware/asyncHandler");
 const { requireAuth, allowRoles } = require("../middleware/auth");
-const { getUsers, adminExists, createStaff, deleteUser } = require("../controllers/userController");
+const { getUsers, adminExists, createStaff, updateStaff, deleteUser } = require("../controllers/userController");
 
 const router = express.Router();
 
@@ -14,6 +14,7 @@ router.use(requireAuth, allowRoles("admin"));
 
 router.get("/", asyncHandler(getUsers));
 router.post("/", asyncHandler(createStaff));
+router.patch("/:id", asyncHandler(updateStaff));
 router.delete("/:id", asyncHandler(deleteUser));
 
 module.exports = router;
