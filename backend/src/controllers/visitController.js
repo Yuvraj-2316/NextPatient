@@ -64,6 +64,27 @@ async function getPatientsByPhone(req, res) {
     }));
 }
 
+// PATCH /api/visits/:id
+// Doctor corrects or adds to the notes of a finished visit.
+// Only doctorNotes can change: symptoms, score and times are the medical record.
+async function updateVisitNotes(req, res) {
+    if (typeof req.body.doctorNotes !== "string") {
+        return res.status(400).json({ message: "doctorNotes must be text" });
+    }
+
+    let visit = await Patient.findOneAndUpdate(
+        { _id: req.params.id, status: "served" },
+        { doctorNotes: req.body.doctorNotes },
+        { new: true, runValidators: true }
+    );
+
+    if (!visit) {
+        return res.status(404).json({ message: "Visit not found" });
+    }
+
+    res.json(visit);
+}
+
 // Start of "today" in the user's timezone, as milliseconds.
 // tzOffsetMinutes is what the browser's new Date().getTimezoneOffset() returns (India = -330).
 function startOfToday(tzOffsetMinutes, now) {
@@ -92,4 +113,4 @@ async function getStats(req, res) {
     res.json({ totalServedToday, emergencyCount, currentlyWaiting });
 }
 
-module.exports = { getVisits, getPatientsByPhone, getStats };
+module.exports = { getVisits, getPatientsByPhone, updateVisitNotes, getStats };
