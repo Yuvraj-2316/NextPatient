@@ -39,9 +39,29 @@ function endSession() {
     window.location.href = "login.html";
 }
 
+// Ends the session and returns a promise that never finishes.
+// The page is leaving for login.html, so the code waiting for data simply stops
+// instead of throwing a "Please log in" error into the console.
+function redirectToLogin() {
+    endSession();
+    return new Promise(function () {});
+}
+
+// Routes anyone can call without logging in: login, admin signup, and the signup check
+function isPublicPath(path) {
+    return path.startsWith("/auth/") || path === "/users/admin-exists";
+}
+
 // One place for every request: sends JSON plus the login token, reads JSON,
 // and throws an Error with the server's message when the status is not 2xx.
 async function apiRequest(path, options = {}) {
+    let token = getAuthToken();
+
+    // Protected request but nobody is logged in: go to login without calling the server
+    if (!token && !isPublicPath(path)) {
+        return redirectToLogin();
+    }
+
     let fetchOptions = {
         method: options.method || "GET",
         headers: {},
@@ -53,7 +73,6 @@ async function apiRequest(path, options = {}) {
         fetchOptions.body = JSON.stringify(options.body);
     }
 
-    let token = getAuthToken();
     if (token) {
         fetchOptions.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -67,10 +86,10 @@ async function apiRequest(path, options = {}) {
         // Response had no JSON body
     }
 
-    // 401 on a protected route means the session is over.
-    // (On /auth/login a 401 just means a wrong password, so login.js handles that itself.)
-    if (response.status === 401 && !path.startsWith("/auth/")) {
-        endSession();
+    // 401 on a protected route means the session is over (token expired or account removed).
+    // On /auth/login a 401 just means a wrong password, so login.js handles that itself.
+    if (response.status === 401 && !isPublicPath(path)) {
+        return redirectToLogin();
     }
 
     if (!response.ok) {
