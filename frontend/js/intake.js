@@ -1,3 +1,16 @@
+// Set while the form is editing a waiting patient (PUT) instead of adding a new one (POST)
+let editingPatientId = null;
+
+// The form checkbox for each symptom name the server stores
+const SYMPTOM_CHECKBOXES = {
+    "Fever": "fever",
+    "Fainting / Loss of Consciousness": "fainting",
+    "Chest Pain": "chestPain",
+    "Severe Bleeding": "bleeding",
+    "Vomiting": "vomiting",
+    "Dizziness": "dizziness"
+};
+
 async function handleFormsubmit(event) {
     event.preventDefault();
 
@@ -7,12 +20,6 @@ async function handleFormsubmit(event) {
     let gender = document.getElementById("gender").value;
     let pain = document.getElementById("PainSeverity").value;
     let breathing = document.getElementById("BreathingDifficulty").value;
-    let hasfever = document.getElementById("fever").checked;
-    let hasfainting = document.getElementById("fainting").checked;
-    let haschestPain = document.getElementById("chestPain").checked;
-    let hasbleeding = document.getElementById("bleeding").checked;
-    let hasvomiting = document.getElementById("vomiting").checked;
-    let hasdizziness = document.getElementById("dizziness").checked;
     let duration = document.getElementById("symptomDuration").value;
 
     if (name == "") {
@@ -28,13 +35,9 @@ async function handleFormsubmit(event) {
         return;
     }
 
-    let symptomsList = [];
-    if (hasfever) symptomsList.push("Fever");
-    if (hasfainting) symptomsList.push("Fainting / Loss of Consciousness");
-    if (haschestPain) symptomsList.push("Chest Pain");
-    if (hasbleeding) symptomsList.push("Severe Bleeding");
-    if (hasvomiting) symptomsList.push("Vomiting");
-    if (hasdizziness) symptomsList.push("Dizziness");
+    let symptomsList = Object.keys(SYMPTOM_CHECKBOXES).filter(function (symptom) {
+        return document.getElementById(SYMPTOM_CHECKBOXES[symptom]).checked;
+    });
 
     // The backend calculates the triage score and arrival time (services/triage.js)
     const patientDetails = {
@@ -48,29 +51,128 @@ async function handleFormsubmit(event) {
         duration: duration
     }
 
+    let wasEditing = editingPatientId !== null;
+
     try {
-        await addPatientToQueue(patientDetails);
+        if (wasEditing) {
+            await updateQueuePatient(editingPatientId, patientDetails);
+        } else {
+            await addPatientToQueue(patientDetails);
+        }
     } catch (error) {
         alert(error.message);
         return;
     }
+
+    resetIntakeForm();
     await renderQueue();
 
-    // Reset form
+    // After saving an edit, go back to the queue to see the new position
+    if (wasEditing) {
+        openIntakeSection("queue");
+    }
+}
+
+// Empties the form and leaves edit mode
+function resetIntakeForm() {
     document.getElementById("name").value = "";
     document.getElementById("age").value = "";
     document.getElementById("phone").value = "";
+    document.getElementById("gender").value = "";
     document.getElementById("PainSeverity").value = "1";
     document.getElementById("painValue").textContent = "1";
     document.getElementById("BreathingDifficulty").value = "1";
     document.getElementById("breathingValue").textContent = "1";
-    document.getElementById("fever").checked = false;
-    document.getElementById("fainting").checked = false;
-    document.getElementById("chestPain").checked = false;
-    document.getElementById("bleeding").checked = false;
-    document.getElementById("vomiting").checked = false;
-    document.getElementById("dizziness").checked = false;
+    Object.values(SYMPTOM_CHECKBOXES).forEach(function (checkboxId) {
+        document.getElementById(checkboxId).checked = false;
+    });
     document.getElementById("symptomDuration").value = "acute";
+
+    editingPatientId = null;
+    setFormMode(false);
+}
+
+// Fills the form with a waiting patient's details so the receptionist can fix them
+function startEditingPatient(patient) {
+    resetIntakeForm();
+
+    document.getElementById("name").value = patient.name;
+    document.getElementById("age").value = patient.age;
+    document.getElementById("phone").value = patient.phone;
+    document.getElementById("gender").value = patient.gender;
+    document.getElementById("PainSeverity").value = patient.pain;
+    document.getElementById("painValue").textContent = patient.pain;
+    document.getElementById("BreathingDifficulty").value = patient.breathing;
+    document.getElementById("breathingValue").textContent = patient.breathing;
+    (patient.symptoms || []).forEach(function (symptom) {
+        let checkboxId = SYMPTOM_CHECKBOXES[symptom];
+        if (checkboxId) document.getElementById(checkboxId).checked = true;
+    });
+    document.getElementById("symptomDuration").value = patient.duration;
+
+    editingPatientId = patient.id;
+    setFormMode(true, patient.name);
+    openIntakeSection("form");
+}
+
+// Switches the form's header and buttons between "add" and "edit"
+function setFormMode(isEditing, patientName) {
+    let header = document.querySelector("#section-form .workspace-card-header span");
+    let submitButton = document.querySelector(".submit-intake-btn");
+
+    header.textContent = isEditing ? `✏️ Editing ${patientName}` : "📋 New Patient Details";
+    submitButton.textContent = isEditing ? "Save Changes ✅" : "Add Patient to Queue ➡️";
+    getCancelEditButton().style.display = isEditing ? "flex" : "none";
+}
+
+// The "Cancel Editing" button, created once below the submit button
+function getCancelEditButton() {
+    let button = document.getElementById("cancelEditBtn");
+
+    if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.id = "cancelEditBtn";
+        button.className = "cancel-edit-btn";
+        button.textContent = "Cancel Editing";
+        button.style.display = "none";
+        button.addEventListener("click", function () {
+            resetIntakeForm();
+            openIntakeSection("queue");
+        });
+        document.querySelector(".submit-intake-btn").after(button);
+    }
+
+    return button;
+}
+
+async function handleRemovePatient(patient) {
+    let confirmRemove = window.confirm(`Remove ${patient.name} from the queue? Use this when a patient leaves before being seen.`);
+    if (!confirmRemove) return;
+
+    try {
+        await removeQueuePatient(patient.id);
+    } catch (error) {
+        alert(error.message);
+    }
+
+    // If this patient was open in the form, stop editing them
+    if (editingPatientId === patient.id) {
+        resetIntakeForm();
+    }
+    await renderQueue();
+}
+
+// Small icon button used on each queue card
+function makeQueueButton(icon, label, onClick) {
+    let button = document.createElement("button");
+    button.type = "button";
+    button.className = "mq-action-btn";
+    button.textContent = icon;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.addEventListener("click", onClick);
+    return button;
 }
 
 async function renderQueue() {
@@ -128,8 +230,19 @@ async function renderQueue() {
                 <strong>${patient.name}</strong> <span style="font-size:0.85rem; color:var(--text-muted); margin-left: 6px;">${patient.age}${patient.gender ? patient.gender.substring(0,1) : ''}</span>
                 <br><span>Waiting: ${waitText}</span>
             </div>
-            <div>${scoreHTML}</div>
+            <div class="mq-side">
+                ${scoreHTML}
+                <div class="mq-actions"></div>
+            </div>
         `;
+
+        let actions = patientCard.querySelector(".mq-actions");
+        actions.appendChild(makeQueueButton("✏️", `Edit ${patient.name}`, function () {
+            startEditingPatient(patient);
+        }));
+        actions.appendChild(makeQueueButton("🗑️", `Remove ${patient.name}`, function () {
+            handleRemovePatient(patient);
+        }));
 
         container.appendChild(patientCard);
     });
@@ -171,4 +284,10 @@ function showIntakeSection(sectionId, clickedLink) {
     document.getElementById('pageTitle').textContent = intakeSectionTitles[sectionId];
     document.querySelectorAll('.sidebar-nav a:not(.logout-btn)').forEach(a => a.classList.remove('active'));
     clickedLink.classList.add('active');
+}
+
+// Opens a section from code (not a click), highlighting its sidebar link
+function openIntakeSection(sectionId) {
+    let link = document.querySelector(`.sidebar-nav a[onclick*="'${sectionId}'"]`);
+    showIntakeSection(sectionId, link);
 }

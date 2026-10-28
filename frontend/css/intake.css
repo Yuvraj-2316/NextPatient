@@ -125,3 +125,58 @@
     flex-direction: column;
     gap: 0.8rem;
 }
+/* ===== Queue edit / remove buttons (phase 2) ===== */
+/* Badge + buttons sit together on the right of each queue card */
+.mq-side {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mq-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Small icon buttons, overriding the big green global button style */
+.mq-action-btn {
+    width: auto;
+    padding: 0.35rem 0.5rem;
+    background: white;
+    border: 1px solid var(--border-mid);
+    border-radius: 6px;
+    box-shadow: none;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.mq-action-btn:hover {
+    background: var(--soft-green);
+    transform: none;
+    box-shadow: none;
+}
+
+/* "Cancel Editing" below the submit button, shown only in edit mode */
+.cancel-edit-btn {
+    margin-top: 0.75rem;
+    background: transparent;
+    color: var(--text-mid);
+    border: 1px solid var(--border-mid);
+    box-shadow: none;
+}
+
+.cancel-edit-btn:hover {
+    background: var(--soft-green);
+    color: var(--text);
+    box-shadow: none;
+}
+
+/* Small phones: move the badge and buttons to their own row */
+@media (max-width: 420px) {
+    .modern-queue-item { flex-wrap: wrap; }
+    .mq-side {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+    }
+}

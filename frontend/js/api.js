@@ -92,6 +92,16 @@ async function addPatientToQueue(patientDetails) {
     return apiRequest("/queue", { method: "POST", body: patientDetails });
 }
 
+// Replaces a waiting patient's details; the server recalculates the triage score
+async function updateQueuePatient(patientId, patientDetails) {
+    return apiRequest(`/queue/${patientId}`, { method: "PUT", body: patientDetails });
+}
+
+// Removes a waiting patient who left before being seen
+async function removeQueuePatient(patientId) {
+    return apiRequest(`/queue/${patientId}`, { method: "DELETE" });
+}
+
 // Calls the next patient only if nobody is being served (same rule as phase 1)
 async function autoCallNextIfAvailable() {
     return apiRequest("/queue/next", { method: "POST" });
