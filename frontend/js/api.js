@@ -1,6 +1,8 @@
 // Phase 2: all data comes from the Express + MongoDB backend (backend/).
-// Change only this line to switch between the local and the deployed backend.
-const API_BASE = "http://localhost:5000/api";
+// Opened from this computer (Live Server) → local backend; opened from the live site → Render.
+const DEPLOYED_API = "https://nextpatient-api.onrender.com/api";
+const LOCAL_API = "http://localhost:5000/api";
+const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname) ? LOCAL_API : DEPLOYED_API;
 
 // ===== Utility Functions =====
 
